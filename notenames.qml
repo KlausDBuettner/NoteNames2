@@ -75,10 +75,10 @@ MuseScore {
    property variant octaveSymbols : [
                   ",,",  ",", " ", " ", "\'", "\'\'", "\'\'\'", "\'\'\'\'", "\'\'\'\'\'", "\'\'\'\'", "\'\'\'\'\'\'"
    ]
-   property variant noteNamesSeparator        : "\n"  //
+   property string noteNamesSeparator        : "\n"  //
    property bool flgShowOctaveSymbol       : true
    property bool flgShowOctaveNumber       : false
-   property variant lastUsedChordText         : " "
+   property string lastUsedChordText         : " "
    property bool flgConvert2UpperLowerCase : true
    property bool  flgSuppressDuplicates     : false
    property bool flgGraceNotesProcessing   : false
@@ -153,7 +153,7 @@ function colorSingleElement (element, voiceColor) {
             toggleColor (element, voiceColor)
 }
 
-property variant voiceYPosIndex : 0
+property int voiceYPosIndex : 0
 
 property variant voiceYPos : [-1.5, -3.0,
                                 13, 14.5,
