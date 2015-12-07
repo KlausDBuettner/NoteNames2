@@ -85,6 +85,7 @@ MuseScore {
         ",,",  ",", " ", " ", "\'", "\'\'", "\'\'\'", "\'\'\'\'", "\'\'\'\'\'", "\'\'\'\'", "\'\'\'\'\'\'"
     ]
 
+    property bool flgDebug : false
     property string noteNamesSeparator        : "\n"  //
     property bool flgShowOctaveSymbol       : true
     property bool flgShowOctaveNumber       : false
@@ -92,7 +93,7 @@ MuseScore {
     property bool flgConvert2UpperLowerCase : true
     property bool  flgSuppressDuplicates     : false
     property bool flgGraceNotesProcessing   : false
-    property bool flgUseVoiceColors : false
+    property bool flgUseVoiceColors : true
     property bool flgVerticalStyle : false   // horizontal orientation, if false
     property bool flgUseLocalization : true
     property string fontName : "Arial"
@@ -102,7 +103,7 @@ MuseScore {
         id: noteNames2settings
         category: "noteNames2settings"
 
-        property alias voiceYPos: noteNames2.voiceYPos
+        property alias activeDebugMessages: noteNames2.flgDebug
         property alias fontSize: noteNames2.fontSize
         property alias fontName: noteNames2.fontName
         property alias useLocalization: noteNames2.flgUseLocalization
@@ -114,15 +115,21 @@ MuseScore {
         property alias suppressDuplicates : noteNames2.flgSuppressDuplicates
     }
 
-    function toggleColor(element, color) {
-        if (element.color !== blackColor)
+function debugMsg (pMsg) {
+if (flgDebug == true) {
+console.log(pMsg)
+}
+}
+
+    function toggleColor(element, pColor) {
+        if (element.color != blackColor)
             element.color = blackColor
         else
-            element.color = color
+            element.color = pColor
     }
 
     function colorVoices(element, voice) {
-        if (flgUseVoiceColors == false)
+        if (! flgUseVoiceColors)
             return
 
         var voiceColor = colors[voice % 4]
@@ -279,7 +286,7 @@ MuseScore {
     }
 
     function getLocalizedName (pLocalizationKey) {
-        if (flgUseLocalization === true) {
+        if (flgUseLocalization == true) {
             return qsTr(pLocalizationKey)
         }
         else {
@@ -297,10 +304,10 @@ MuseScore {
         for (var i = 0; i < an.length; i++) {
             var iType = an[i].type
             console.log("type = " + iType)
-            if (iType === Element.TEMPO_TEXT) {
+            if (iType == Element.TEMPO_TEXT) {
                 console.log("Tempo Text: tempo="+an[i].tempo);
             }
-            if (iType === Element.CLEF) {
+            if (iType == Element.CLEF) {
                 console.log("Clef: clef=");
             }
         }
@@ -310,14 +317,16 @@ MuseScore {
 
         // check MuseScore version
         if (!(mscoreMajorVersion == 2 && (mscoreMinorVersion > 0 || mscoreUpdateVersion>0))) {
-             errorDialog.openErrorDialog(
-                        qsTr("Minimum MuseScore Version 2.0.1 required for this plugin"))
+             errorDialog.showError(
+                        "Minimum MuseScore Version 2.0.1 required for this plugin")
         }
+
         if (!(curScore)) {
-            errorDialog.showError(qsTr(
-                                      "Select a score before executing this plugin."))
+            errorDialog.showError("Select a score before executing this plugin.")
             Qt.quit()
         }
+
+debugMsg ("noteNames2 started ...")
 
         var cursor = curScore.newCursor();
         var startStaff, endStaff, endTick;
@@ -385,7 +394,7 @@ MuseScore {
              Qt.quit()
         }
         function showError(message) {
-            text = message
+            text = qsTr(message)
             open()
         }
     }
