@@ -16,10 +16,11 @@
 
 import QtQuick 2.2
 import MuseScore 1.0
+import QtQuick.Dialogs 1.2
 import Qt.labs.settings 1.0
 
 MuseScore {
-    id: "noteNames2"
+    id: noteNames2
     version: "0.5"
     description: qsTr("NoteNames 2 by KlaBueBaer")
     menuPath: "Plugins." + qsTr("Note Names 2")
@@ -31,7 +32,7 @@ MuseScore {
         -1, -1,
         12, 12]
 
-    property string colors: [
+    property variant colors: [
         "#1259d0", // Voice 1 - Blue    18  89 208
         "#009234", // Voice 2 - Green    0 146  52
         "#c04400", // Voice 3 - Orange 192  68   0
@@ -40,7 +41,37 @@ MuseScore {
     ]
     property string blackColor : "#000000"
 
-    property string
+    property variant userAccidentalTexts : [
+        "?",
+        "#",
+         "b",
+         "##",
+         "bb",
+         "natural",
+         "flat-slash",
+         "flat-slash2",
+         "mirrored-flat2",
+         "mirrored-flat",
+         "mirrored-flat-slash",
+         "flat-flat-slash",
+         "sharp-slash",
+         "sharp-slash2",
+         "sharp-slash3",
+         "sharp-slash4",
+         "sharp arrow up",
+         "sharp arrow down",
+         "sharp arrow both",
+         "flat arrow up",
+         "flat arrow down",
+         "flat arrow both",
+         "natural arrow down",
+         "natural arrow up",
+         "natural arrow both",
+         "sori",
+         "koron"
+    ]
+
+    property variant
     tpcText : [
         "Fbb", // -1
         "Cbb",   // 0
@@ -50,7 +81,7 @@ MuseScore {
         "G##",        "D##",        "A##",        "E##",        "B##"
     ];
 
-    property string octaveSymbols : [
+    property variant octaveSymbols : [
         ",,",  ",", " ", " ", "\'", "\'\'", "\'\'\'", "\'\'\'\'", "\'\'\'\'\'", "\'\'\'\'", "\'\'\'\'\'\'"
     ]
 
@@ -68,12 +99,13 @@ MuseScore {
     property string fontSize : "30%"
 
     Settings {
-        id: "noteNames2settings"
+        id: noteNames2settings
         category: "noteNames2settings"
+
         property alias voiceYPos: noteNames2.voiceYPos
         property alias fontSize: noteNames2.fontSize
         property alias fontName: noteNames2.fontName
-        property alias UseLocalizsation: noteNames2.flgUseLocalizsation
+        property alias useLocalization: noteNames2.flgUseLocalization
         property alias showOctaveSymbol: noteNames2.flgShowOctaveSymbol
         property alias showOctaveNumber : noteNames2.flgShowOctaveNumber
         property alias convert2UpperLowerCase : noteNames2.flgConvert2UpperLowerCase
@@ -225,36 +257,15 @@ MuseScore {
             // only #, b, natural and possibly also ## seem to be available in UNICODE
 
             if (false) {
-                switch (notes[i].userAccidental) {
-                case  0: break;
-                case  1: chordText = qsTr("#") + chordText; break;
-                case  2: chordText = qsTr("b") + chordText; break;
-                case  3: chordText = qsTr("##") + chordText; break;
-                case  4: chordText = qsTr("bb") + chordText; break;
-                case  5: chordText = qsTr("natural") + chordText; break;
-                case  6: chordText = qsTr("flat-slash") + chordText; break;
-                case  7: chordText = qsTr("flat-slash2") + chordText; break;
-                case  8: chordText = qsTr("mirrored-flat2") + chordText; break;
-                case  9: chordText = qsTr("mirrored-flat") + chordText; break;
-                case 10: chordText = qsTr("mirrored-flat-slash") + chordText; break;
-                case 11: chordText = qsTr("flat-flat-slash") + chordText; break;
-                case 12: chordText = qsTr("sharp-slash") + chordText; break;
-                case 13: chordText = qsTr("sharp-slash2") + chordText; break;
-                case 14: chordText = qsTr("sharp-slash3") + chordText; break;
-                case 15: chordText = qsTr("sharp-slash4") + chordText; break;
-                case 16: chordText = qsTr("sharp arrow up") + chordText; break;
-                case 17: chordText = qsTr("sharp arrow down") + chordText; break;
-                case 18: chordText = qsTr("sharp arrow both") + chordText; break;
-                case 19: chordText = qsTr("flat arrow up") + chordText; break;
-                case 20: chordText = qsTr("flat arrow down") + chordText; break;
-                case 21: chordText = qsTr("flat arrow both") + chordText; break;
-                case 22: chordText = qsTr("natural arrow down") + chordText; break;
-                case 23: chordText = qsTr("natural arrow up") + chordText; break;
-                case 24: chordText = qsTr("natural arrow both") + chordText; break;
-                case 25: chordText = qsTr("sori") + chordText; break;
-                case 26: chordText = qsTr("koron") + chordText; break;
-                default: chordText = qsTr("?") + chordText; break;
-                } // end switch userAccidental
+                var idx = notes[i].userAccidental;
+                if (idx !== 0) {
+                    if (idx >= 1 && idx <= 26) {
+                        chordText = getLocalizedName(userAccidentalTexts[idx]) + chordText
+                    }
+                    else {
+                        chordText = qsTr(userAccidentalTexts[0])
+                    }
+                }
             } // end if courtesy- and microtonal accidentals
         } // end for each note
 
@@ -296,9 +307,18 @@ MuseScore {
     }
 
     onRun: {
-        if (typeof curScore === 'undefined')
-            Qt.quit();
-        
+
+        // check MuseScore version
+        if (!(mscoreMajorVersion == 2 && (mscoreMinorVersion > 0 || mscoreUpdateVersion>0))) {
+             errorDialog.openErrorDialog(
+                        qsTr("Minimum MuseScore Version 2.0.1 required for this plugin"))
+        }
+        if (!(curScore)) {
+            errorDialog.showError(qsTr(
+                                      "Select a score before executing this plugin."))
+            Qt.quit()
+        }
+
         var cursor = curScore.newCursor();
         var startStaff, endStaff, endTick;
         var fullScore = false;
@@ -355,4 +375,18 @@ MuseScore {
 
         Qt.quit();
     } // end onRun
+
+    MessageDialog {
+        id: errorDialog
+        visible: false
+        title: qsTr("Error")
+        text: "Error"
+        onAccepted: {
+             Qt.quit()
+        }
+        function showError(message) {
+            text = message
+            open()
+        }
+    }
 }
