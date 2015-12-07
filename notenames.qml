@@ -24,57 +24,36 @@ MuseScore {
     description: qsTr("NoteNames 2 by KlaBueBaer")
     menuPath: "Plugins." + qsTr("Note Names 2")
 
-    property variant colors: [
+    property int voiceYPosIndex : 0
+
+    property variant voiceYPos : [-1.5, -3.0,
+        13, 14.5,
+        -1, -1,
+        12, 12]
+
+    property string colors: [
         "#1259d0", // Voice 1 - Blue    18  89 208
         "#009234", // Voice 2 - Green    0 146  52
         "#c04400", // Voice 3 - Orange 192  68   0
         "#71167a", // Voice 4 - Purple 113  22 122
         "#000000", // black
     ]
-    property variant blackColor : colors[4]
+    property string blackColor : "#000000"
 
-    property variant
+    property string
     tpcText : [
         "Fbb", // -1
         "Cbb",   // 0
-        "Gbb",
-        "Dbb",
-        "Abb",
-        "Ebb",
-        "Bbb",
-        "Fb",
-        "Cb",
-        "Gb",
-        "Db",
-        "Ab",
-        "Eb",
-        "Bb",
-        "F",
-        "C",
-        "G",
-        "D",
-        "A",
-        "E",
-        "B",
-        "F#",
-        "C#",
-        "G#",
-        "D#",
-        "A#",
-        "E#",
-        "B#",
-        "F##",
-        "C##",
-        "G##",
-        "D##",
-        "A##",
-        "E##",
-        "B##"
+        "Gbb",         "Dbb",         "Abb",        "Ebb",        "Bbb",        "Fb",        "Cb",        "Gb",        "Db",
+        "Ab",        "Eb",        "Bb",        "F",        "C",        "G",        "D",        "A",        "E",        "B",
+        "F#",        "C#",        "G#",        "D#",        "A#",        "E#",        "B#",        "F##",        "C##",
+        "G##",        "D##",        "A##",        "E##",        "B##"
     ];
 
-    property variant octaveSymbols : [
+    property string octaveSymbols : [
         ",,",  ",", " ", " ", "\'", "\'\'", "\'\'\'", "\'\'\'\'", "\'\'\'\'\'", "\'\'\'\'", "\'\'\'\'\'\'"
     ]
+
     property string noteNamesSeparator        : "\n"  //
     property bool flgShowOctaveSymbol       : true
     property bool flgShowOctaveNumber       : false
@@ -84,21 +63,24 @@ MuseScore {
     property bool flgGraceNotesProcessing   : false
     property bool flgUseVoiceColors : false
     property bool flgVerticalStyle : false   // horizontal orientation, if false
-
+    property bool flgUseLocalization : true
+    property string fontName : "Arial"
+    property string fontSize : "30%"
 
     Settings {
         id: "noteNames2settings"
         category: "noteNames2settings"
+        property alias voiceYPos: noteNames2.voiceYPos
+        property alias fontSize: noteNames2.fontSize
+        property alias fontName: noteNames2.fontName
+        property alias UseLocalizsation: noteNames2.flgUseLocalizsation
         property alias showOctaveSymbol: noteNames2.flgShowOctaveSymbol
         property alias showOctaveNumber : noteNames2.flgShowOctaveNumber
         property alias convert2UpperLowerCase : noteNames2.flgConvert2UpperLowerCase
         property alias verticalStyle : noteNames2.flgVerticalStyle
         property alias useVoiceColors : noteNames2.flgUseVoiceColors
         property alias suppressDuplicates : noteNames2.flgSuppressDuplicates
-
-        // ...
     }
-
 
     function toggleColor(element, color) {
         if (element.color !== blackColor)
@@ -141,10 +123,7 @@ MuseScore {
     function colorChordElements (element, voiceColor) {
         colorSingleElement (element.stem, voiceColor)
         colorSingleElement (element.hook, voiceColor)
-        // beams would need special treatment as they belong to more than
-        // one chord, esp. if they belong to an even number of chords,
-        // so for now leave (or make) them black
-        colorSingleElement (element.beam, blackColor)
+        colorSingleElement (element.beam, voiceColor)
         colorSingleElement (element.stemSlash, voiceColor) // Acciaccatura
     }
 
@@ -152,14 +131,6 @@ MuseScore {
         if (element)
             toggleColor (element, voiceColor)
     }
-
-    property int voiceYPosIndex : 0
-
-    property variant voiceYPos : [-1.5, -3.0,
-        13, 14.5,
-        -1, -1,
-        12, 12]
-
 
     function createNoteNames (cursor, voice, notes) {
 
@@ -200,10 +171,10 @@ MuseScore {
             var currTonalPitchClass = currentNote.tpc
             var currNoteName = "";
             if (currTonalPitchClass >= -1 && currTonalPitchClass <= 33) {
-                currNoteName = qsTr(tpcText[currTonalPitchClass + 1]);
+                currNoteName = getLocalizedName(tpcText[currTonalPitchClass + 1]);
             }
             else {
-                currNoteName = qsTr("?");
+                currNoteName = getLocalizedName("?");
             }
             
             var octaveNumb = Math.floor(currentNote.pitch / 12) - 1;
@@ -235,7 +206,7 @@ MuseScore {
             }
 
             chordText += currNoteName;
-            if (currentNote.accidentalType != Accidental.NONE) {
+            if (currentNote.accidentalType !== Accidental.NONE) {
                 // adjust the horizontal position of the text according to the position of the accidental
                 chordTextPosX = currentNote.accidental.pos.x;
             }
@@ -289,17 +260,25 @@ MuseScore {
 
         if (chordText != lastUsedChordText || flgSuppressDuplicates == false) {
             lastUsedChordText = chordText;
-            chordText = "<font size=\"30%\"  />" + chordText;
-            chordText = "<font face=\"Arial\" />" + chordText;
+            chordText = "<font size=\"" + fontSize + "\" />" + chordText;
+            chordText = "<font face=\"" + fontName + "\" />" + chordText;
             text.text = chordText
             text.pos.x = chordTextPosX
         }
+    }
 
+    function getLocalizedName (pLocalizationKey) {
+        if (flgUseLocalization === true) {
+            return qsTr(pLocalizationKey)
+        }
+        else {
+            return pLocalizationKey
+        }
     }
 
     function dumpSegment (pCursor) {
 
-        if (pCursor.element && pCursor.element.type == Element.CLEF) {
+        if (pCursor.element && pCursor.element.type === Element.CLEF) {
             console.log("CLEF clef = ")
         }
         var an = pCursor.segment.annotations;
@@ -307,10 +286,10 @@ MuseScore {
         for (var i = 0; i < an.length; i++) {
             var iType = an[i].type
             console.log("type = " + iType)
-            if (iType == Element.TEMPO_TEXT) {
+            if (iType === Element.TEMPO_TEXT) {
                 console.log("Tempo Text: tempo="+an[i].tempo);
             }
-            if (iType == Element.CLEF) {
+            if (iType === Element.CLEF) {
                 console.log("Clef: clef=");
             }
         }
@@ -337,7 +316,7 @@ MuseScore {
         else {
             startStaff = cursor.staffIdx;
             cursor.rewind(2);
-            if (cursor.tick == 0) {
+            if (cursor.tick === 0) {
                 // this happens when the selection includes
                 // the last measure of the score.
                 // rewind(2) goes behind the last segment (where
@@ -361,7 +340,7 @@ MuseScore {
                 for (cursor.rewind(rewindValue); cursor.segment && (fullScore || cursor.tick < endTick); cursor.next()) {
                     // dumpSegment(cursor)
                     var element = cursor.element
-                    if (element && element.type == Element.CHORD) {
+                    if (element && element.type === Element.CHORD) {
                         flgGraceNotesProcessing = true
                         var graceChords = element.graceNotes;
                         for (var i = 0; i < graceChords.length; i++) {
@@ -370,12 +349,10 @@ MuseScore {
                         flgGraceNotesProcessing = false
                         createNoteNames (cursor, voice, cursor.element.notes);
                     } // end if CHORD
-                } // end while segment
+                } // end for segment
             } // end for voice
         } // end for staff
 
-        noteNames2settings.showOctaveSymbol = noteNames2.flgShowOctaveSymbol
-        noteNames2settings.useVoiceColors = false
         Qt.quit();
     } // end onRun
 }
