@@ -44,31 +44,31 @@ MuseScore {
     property variant userAccidentalTexts : [
         "?",
         "#",
-         "b",
-         "##",
-         "bb",
-         "natural",
-         "flat-slash",
-         "flat-slash2",
-         "mirrored-flat2",
-         "mirrored-flat",
-         "mirrored-flat-slash",
-         "flat-flat-slash",
-         "sharp-slash",
-         "sharp-slash2",
-         "sharp-slash3",
-         "sharp-slash4",
-         "sharp arrow up",
-         "sharp arrow down",
-         "sharp arrow both",
-         "flat arrow up",
-         "flat arrow down",
-         "flat arrow both",
-         "natural arrow down",
-         "natural arrow up",
-         "natural arrow both",
-         "sori",
-         "koron"
+        "b",
+        "##",
+        "bb",
+        "natural",
+        "flat-slash",
+        "flat-slash2",
+        "mirrored-flat2",
+        "mirrored-flat",
+        "mirrored-flat-slash",
+        "flat-flat-slash",
+        "sharp-slash",
+        "sharp-slash2",
+        "sharp-slash3",
+        "sharp-slash4",
+        "sharp arrow up",
+        "sharp arrow down",
+        "sharp arrow both",
+        "flat arrow up",
+        "flat arrow down",
+        "flat arrow both",
+        "natural arrow down",
+        "natural arrow up",
+        "natural arrow both",
+        "sori",
+        "koron"
     ]
 
     property variant
@@ -85,6 +85,8 @@ MuseScore {
         ",,",  ",", " ", " ", "\'", "\'\'", "\'\'\'", "\'\'\'\'", "\'\'\'\'\'", "\'\'\'\'", "\'\'\'\'\'\'"
     ]
 
+
+    property bool flgIgnoreTabs : true
     property bool flgDebug : false
     property string noteNamesSeparator        : "\n"  //
     property bool flgShowOctaveSymbol       : true
@@ -103,7 +105,8 @@ MuseScore {
         id: noteNames2settings
         category: "noteNames2settings"
 
-        property alias activeDebugMessages: noteNames2.flgDebug
+        property alias ignoreTabs: noteNames2.flgIgnoreTabs
+        property alias activateDebugMessages: noteNames2.flgDebug
         property alias fontSize: noteNames2.fontSize
         property alias fontName: noteNames2.fontName
         property alias useLocalization: noteNames2.flgUseLocalization
@@ -115,11 +118,11 @@ MuseScore {
         property alias suppressDuplicates : noteNames2.flgSuppressDuplicates
     }
 
-function debugMsg (pMsg) {
-if (flgDebug == true) {
-console.log(pMsg)
-}
-}
+    function debugMsg (pMsg) {
+        if (flgDebug == true) {
+            console.log(pMsg)
+        }
+    }
 
     function toggleColor(element, pColor) {
         if (element.color != blackColor)
@@ -137,7 +140,7 @@ console.log(pMsg)
         switch (element.type) {
         case Element.STAFF_TEXT:
         case Element.REST:
-            toggleColor(element, voiceColor)
+            toggleColor (element, voiceColor)
             break
 
         case Element.CHORD :
@@ -294,6 +297,17 @@ console.log(pMsg)
         }
     }
 
+    function ignoreStave (currentStave, previousStave) {
+        if (flgIgnoreTabs) {
+            if (previousStave) {
+                if (typeof currentStave == "undefined" || previousStave.hasTabStaff == true) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     function dumpSegment (pCursor) {
 
         if (pCursor.element && pCursor.element.type === Element.CLEF) {
@@ -317,8 +331,9 @@ console.log(pMsg)
 
         // check MuseScore version
         if (!(mscoreMajorVersion == 2 && (mscoreMinorVersion > 0 || mscoreUpdateVersion>0))) {
-             errorDialog.showError(
+            errorDialog.showError(
                         "Minimum MuseScore Version 2.0.1 required for this plugin")
+            Qt.quit()
         }
 
         if (!(curScore)) {
@@ -326,60 +341,84 @@ console.log(pMsg)
             Qt.quit()
         }
 
-debugMsg ("noteNames2 started ...")
+        debugMsg ("noteNames2 started ...")
 
         var cursor = curScore.newCursor();
-        var startStaff, endStaff, endTick;
+        var idxStartStave, idxEndStave, lastTick2Process;
         var fullScore = false;
         var lastUsedChordText = "";
 
-        cursor.rewind(1);
-
         var rewindValue = 1; // beginning of selection
+        cursor.rewind(rewindValue);
+
         if (!cursor.segment) { // no selection
             fullScore = true;
-            startStaff = 0; // start with 1st staff
-            endStaff  = curScore.nstaves - 1; // and end with last
+            idxStartStave = 0; // start with 1st staff
+            idxEndStave  = curScore.nstaves - 1; // and end with last
             rewindValue = 0; // beginning of score
         }
         else {
-            startStaff = cursor.staffIdx;
+            idxStartStave = cursor.staffIdx;
             cursor.rewind(2);
             if (cursor.tick === 0) {
                 // this happens when the selection includes
                 // the last measure of the score.
                 // rewind(2) goes behind the last segment (where
                 // there's none) and sets tick=0
-                endTick = curScore.lastSegment.tick + 1;
+                lastTick2Process = curScore.lastSegment.tick + 1;
             }
             else {
-                endTick = cursor.tick;
+                lastTick2Process = cursor.tick;
             }
-            endStaff   = cursor.staffIdx;
+            idxEndStave   = cursor.staffIdx;
         }
 
         if (flgVerticalStyle == false)
             noteNamesSeparator = "-"
 
-        for (var staff = startStaff; staff <= endStaff; staff++) {
-            for (var voice = 0; voice < 4; voice++) {
-                cursor.voice    = voice;
-                cursor.staffIdx = staff;
+        for (var i = 0; i < curScore.parts.length; i++) {
+            debugMsg("curScore.parts.length = " + cursor.score.parts.length +", instrument = " + cursor.score.parts[i].partName +
+                     ", instrumentId = " + cursor.score.parts[i].instrumentId +
+                     ", hasTabStaff = " + cursor.score.parts[i].hasTabStaff)
+        }
 
-                for (cursor.rewind(rewindValue); cursor.segment && (fullScore || cursor.tick < endTick); cursor.next()) {
-                    // dumpSegment(cursor)
-                    var element = cursor.element
-                    if (element && element.type === Element.CHORD) {
-                        flgGraceNotesProcessing = true
-                        var graceChords = element.graceNotes;
-                        for (var i = 0; i < graceChords.length; i++) {
-                            createNoteNames (cursor, voice, graceChords[i].notes);
+
+        for (var idxCurrentStave = idxStartStave; idxCurrentStave <= idxEndStave; idxCurrentStave++) {
+            var currentStave, previousStave
+            currentStave = cursor.score.parts[idxCurrentStave]
+            if (ignoreStave (currentStave, previousStave)) {
+                // ignore Tabs
+                previousStave = null
+            }
+            else {
+                previousStave = currentStave
+                // debugMsg ("instrument = " + cursor.score.parts[staff].hasTabStaff) // [staff].partName)
+                for (var idxVoice = 0; idxVoice < 4; idxVoice++) {
+                    cursor.voice    = idxVoice;
+                    cursor.staffIdx = idxCurrentStave;
+                    // debugMsg ("idxStaff = " +  staff + ", cursor.staffIdx = " + cursor.staffIdx + ", voice = " + cursor.voice)
+                    // debugMsg ("cursor.score.nstaves = " + cursor.score.nstaves)
+
+                    for (cursor.rewind(rewindValue); cursor.segment && (fullScore || cursor.tick < lastTick2Process); cursor.next()) {
+                        // dumpSegment(cursor)
+                        var element = cursor.element
+                        if (element) {
+                            if (element.type === Element.CHORD) {
+                                flgGraceNotesProcessing = true
+                                var graceChords = element.graceNotes;
+                                for (var i = 0; i < graceChords.length; i++) {
+                                    createNoteNames (cursor, idxVoice, graceChords[i].notes);
+                                }
+                                flgGraceNotesProcessing = false
+                                createNoteNames (cursor, idxVoice, cursor.element.notes);
+                            }
+                        } // end if CHORD
+                        if (element.type === Element.REST) {
+                            colorVoices (element, idxVoice)   // how to color a rest?
                         }
-                        flgGraceNotesProcessing = false
-                        createNoteNames (cursor, voice, cursor.element.notes);
-                    } // end if CHORD
-                } // end for segment
-            } // end for voice
+                    } // end for segment
+                } // end for voice
+            }
         } // end for staff
 
         Qt.quit();
@@ -391,7 +430,7 @@ debugMsg ("noteNames2 started ...")
         title: qsTr("Error")
         text: "Error"
         onAccepted: {
-             Qt.quit()
+            Qt.quit()
         }
         function showError(message) {
             text = qsTr(message)
