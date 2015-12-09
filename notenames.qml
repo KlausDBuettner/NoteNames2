@@ -94,7 +94,7 @@ MuseScore {
     property string lastUsedChordText         : " "
     property bool flgConvert2UpperLowerCase : true
     property bool  flgSuppressDuplicates     : false
-    property bool flgGraceNotesProcessing   : false
+    property bool flgGraceNotesProcessingInProgress   : false
     property bool flgUseVoiceColors : true
     property bool flgVerticalStyle : false   // horizontal orientation, if false
     property bool flgUseLocalization : true
@@ -253,7 +253,7 @@ MuseScore {
                 chordTextPosX = currentNote.accidental.pos.x;
             }
             else {
-                if (flgGraceNotesProcessing) {
+                if (flgGraceNotesProcessingInProgress) {
                     chordTextPosX = currentNote.parent.pos.x
                 }
                 else {
@@ -404,12 +404,12 @@ MuseScore {
                         var element = cursor.element
                         if (element) {
                             if (element.type === Element.CHORD) {
-                                flgGraceNotesProcessing = true
+                                flgGraceNotesProcessingInProgress = true
                                 var graceChords = element.graceNotes;
                                 for (var i = 0; i < graceChords.length; i++) {
                                     createNoteNames (cursor, idxVoice, graceChords[i].notes);
                                 }
-                                flgGraceNotesProcessing = false
+                                flgGraceNotesProcessingInProgress = false
                                 createNoteNames (cursor, idxVoice, cursor.element.notes);
                             }
                         } // end if CHORD
